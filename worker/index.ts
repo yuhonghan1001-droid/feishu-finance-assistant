@@ -78,6 +78,7 @@ function jsonResponse(body: unknown, status = 200): Response {
     status,
     headers: {
       "cache-control": "no-store",
+      "content-type": "application/json; charset=utf-8",
     },
   });
 }
@@ -310,11 +311,6 @@ async function receiveFeishuEvent(
     return jsonResponse({ error: "Method not allowed" }, 405);
   }
 
-  const verificationToken = env.FEISHU_VERIFICATION_TOKEN?.trim();
-  if (!verificationToken) {
-    return jsonResponse({ error: "Feishu callback is not configured" }, 503);
-  }
-
   const rawBody = await request.text();
   const encryptKey = env.FEISHU_ENCRYPT_KEY?.trim();
 
@@ -334,6 +330,11 @@ async function receiveFeishuEvent(
     ) {
       return jsonResponse({ error: "Invalid callback signature" }, 401);
     }
+  }
+
+  const verificationToken = env.FEISHU_VERIFICATION_TOKEN?.trim();
+  if (!verificationToken) {
+    return jsonResponse({ error: "Feishu callback is not configured" }, 503);
   }
 
   const receivedToken =
@@ -388,8 +389,9 @@ async function receiveFeishuEvent(
 const worker = {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
+    const pathname = url.pathname.replace(/\/+$/, "");
 
-    if (url.pathname === "/api/feishu/events") {
+    if (pathname === "/api/feishu/events") {
       return receiveFeishuEvent(request, env, ctx);
     }
 
